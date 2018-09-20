@@ -38,18 +38,48 @@ app.listen(PORT, () => console.log(`Listening on ${PORT}`));
 function WeatherResult(weather) {
   this.time = new Date(weather.time * 1000).toString().slice(0, 15);
   this.forecast = weather.summary;
+  this.created_at = Date.now();
 }
 
 WeatherResult.prototype = {
-  save: function(location_id) {
+  save: function (location_id) {
     const SQL = `INSERT INTO ${
       this.tableName
-    } (forecast, time, location_id) VALUES ($1, $2, $3, $4);`;
+      } (forecast, time, location_id) VALUES ($1, $2, $3, $4);`;
     const values = [this.forecast, this.time, this.created_at, location_id];
 
     client.query(SQL, values);
   }
 };
+
+RestaurantResult.prototype = {
+  save: function (location_id) {
+    const SQL = `INSERT INTO ${
+      this.tableName
+      } (name,image_url,price,rating,url,created_at,location_id) VALUES ($1, $2, $3, $4, $5, $6);`;
+    const values = [this.name, this.image_url, this.price, this.rating, this.url, this.created_at, location_id];
+
+    client.query(SQL, values);
+  }
+};
+
+MovieResults.prototype = {
+  save: function (location_id) {
+    const SQL = `INSERT INTO ${
+      this.tableName
+      } (title, overview, average_votes, total_votes, image_url, popularity, relased_on, created_at, location_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9);`;
+    const values = [this.title, this.overview, this.average_votes, this.total_votes, this.image_url, this.popularity, this.release_on, this.created_at, location_id];
+
+    client.query(SQL, values);
+  }
+};
+
+// Define table names for each process
+WeatherResult.tableName = 'weathers';
+RestaurantResult.tableName = 'restaurants';
+MovieResults.tableName = 'movies';
+
+
 //Constructor function for Yelp API
 function RestaurantResult(restaurant) {
   this.name = restaurant.name;
@@ -57,6 +87,7 @@ function RestaurantResult(restaurant) {
   this.price = restaurant.price;
   this.rating = restaurant.rating;
   this.url = restaurant.url;
+  this.created_at = Date.now();
 }
 
 //Constructor function for The Movie Database API
@@ -68,13 +99,14 @@ function MovieResults(movie) {
   this.image_url = `https://image.tmdb.org/t/p/w500${movie.poster_path}`;
   this.popularity = movie.popularity;
   this.released_on = movie.release_date;
+  this.created_at = Date.now();
 }
 
 // Google helper function refactored prior to lab start.
 function getLocation(request, response) {
   const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${
     request.query.data
-  }&key=${process.env.GOOGLE_API_KEY}`;
+    }&key=${process.env.GOOGLE_API_KEY}`;
   return superagent
     .get(url)
     .then(location => {
@@ -95,15 +127,15 @@ function LocationResult(search, location) {
 function getWeather(request, response) {
   const url = `https://api.darksky.net/forecast/${
     process.env.DARK_SKY_API_KEY
-  }/${request.query.data.latitude},${request.query.data.longitude}`;
-  return superagent
-    .get(url)
+    }/${request.query.data.latitude},${request.query.data.longitude}`;
+  return superagent.get(url)
     .then(result => {
-      let weatherData = [];
-      weatherData = result.body.daily.data.map(weather => {
-        return new WeatherResult(weather);
+      const weatherSummary = result.body.daily.data.map(day => {
+        const dailySumary = new WeatherResult(day);
+        dailySumary.save(request.query.data.id);
+        return dailySumary;
       });
-      response.send(weatherData);
+      response.send(weatherSummary);
     })
     .catch(error => processError(error, response));
 }
@@ -112,7 +144,7 @@ function getWeather(request, response) {
 function getRestaurants(request, response) {
   const url = `https://api.yelp.com/v3/businesses/search?location=${
     request.query.data.search_query
-  }`;
+    }`;
 
   return superagent
     .get(url)
@@ -131,7 +163,7 @@ function getRestaurants(request, response) {
 function getMovies(request, response) {
   const url = `https://api.themoviedb.org/3/search/movie?api_key=${
     process.env.TMDB_APIv3_KEY
-  }&query=${request.query.data.search_query}`;
+    }&query=${request.query.data.search_query}`;
   return superagent
     .get(url)
     .then(result => {
