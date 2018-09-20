@@ -47,10 +47,8 @@ function WeatherResult(weather) {
 }
 
 WeatherResult.prototype = {
-  save: function(location_id) {
-    const SQL = `INSERT INTO ${
-      this.tableName
-    } (forecast, time, location_id) VALUES ($1, $2, $3, $4);`;
+  save: function (location_id) {
+    const SQL = `INSERT INTO ${this.tableName} (forecast, time, location_id) VALUES ($1, $2, $3, $4);`;
     const values = [this.forecast, this.time, this.created_at, location_id];
 
     client.query(SQL, values);
@@ -68,10 +66,8 @@ function RestaurantResult(restaurant) {
 }
 
 RestaurantResult.prototype = {
-  save: function(location_id) {
-    const SQL = `INSERT INTO ${
-      this.tableName
-    } (name,image_url,price,rating,url,created_at,location_id) VALUES ($1, $2, $3, $4, $5, $6);`;
+  save: function (location_id) {
+    const SQL = `INSERT INTO ${this.tableName} (name,image_url,price,rating,url,created_at,location_id) VALUES ($1, $2, $3, $4, $5, $6);`;
     const values = [
       this.name,
       this.image_url,
@@ -99,10 +95,8 @@ function MovieResults(movie) {
 }
 
 MovieResults.prototype = {
-  save: function(location_id) {
-    const SQL = `INSERT INTO ${
-      this.tableName
-    } (title, overview, average_votes, total_votes, image_url, popularity, relased_on, created_at, location_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9);`;
+  save: function (location_id) {
+    const SQL = `INSERT INTO ${this.tableName} (title, overview, average_votes, total_votes, image_url, popularity, relased_on, created_at, location_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9);`;
     const values = [
       this.title,
       this.overview,
@@ -126,9 +120,7 @@ MovieResults.tableName = 'movies';
 
 // Google helper function refactored prior to lab start.
 function getLocation(request, response) {
-  const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${
-    request.query.data
-  }&key=${process.env.GOOGLE_API_KEY}`;
+  const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${request.query.data}&key=${process.env.GOOGLE_API_KEY}`;
   return superagent
     .get(url)
     .then(location => {
@@ -168,10 +160,8 @@ function getWeather(request, response) {
   WeatherResult.lookup({
     tableName: WeatherResult.tableName,
 
-    cacheMiss: function() {
-      const url = `https://api.darksky.net/forecast/${
-        process.env.DARK_SKY_API_KEY
-      }/${request.query.data.latitude},${request.query.data.longitude}`;
+    cacheMiss: function () {
+      const url = `https://api.darksky.net/forecast/${process.env.DARK_SKY_API_KEY}/${request.query.data.latitude},${request.query.data.longitude}`;
 
       superagent
         .get(url)
@@ -186,7 +176,7 @@ function getWeather(request, response) {
         .catch(error => processError(error, response));
     },
 
-    cacheHit: function(resultsArray) {
+    cacheHit: function (resultsArray) {
       console.log('CacheHit');
       let ageOfData = (Date.now() - resultsArray[0].created_at) / (1000 * 60);
 
@@ -206,9 +196,7 @@ function getWeather(request, response) {
 
 // Restraurant helper function
 function getRestaurants(request, response) {
-  const url = `https://api.yelp.com/v3/businesses/search?location=${
-    request.query.data.search_query
-  }`;
+  const url = `https://api.yelp.com/v3/businesses/search?location=${request.query.data.search_query}`;
   return superagent
     .get(url)
     .set('Authorization', `Bearer ${process.env.YELP_API_KEY}`)
@@ -227,7 +215,7 @@ function getRestaurants(request, response) {
 function getMovies(request, response) {
   const url = `https://api.themoviedb.org/3/search/movie?api_key=${
     process.env.TMDB_APIv3_KEY
-  }&query=${request.query.data.search_query}`;
+    }&query=${request.query.data.search_query}`;
   return superagent
     .get(url)
     .then(result => {
