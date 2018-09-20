@@ -7,6 +7,13 @@ const pg = require('pg');
 
 const app = express();
 
+// Setup database by creating a client instance, pointing it at our database
+const client = new pg.Client(process.env.DATABASE_URL);
+client.connect();
+
+//Error handling for database
+
+client.on('error', err => console.err(err));
 // Tells express to use 'cors' for cross-origin resource sharing
 app.use(cors());
 
@@ -33,6 +40,16 @@ function WeatherResult(weather) {
   this.forecast = weather.summary;
 }
 
+WeatherResult.prototype = {
+  save: function(location_id) {
+    const SQL = `INSERT INTO ${
+      this.tableName
+    } (forecast, time, location_id) VALUES ($1, $2, $3, $4);`;
+    const values = [this.forecast, this.time, this.created_at, location_id];
+
+    client.query(SQL, values);
+  }
+};
 //Constructor function for Yelp API
 function RestaurantResult(restaurant) {
   this.name = restaurant.name;
