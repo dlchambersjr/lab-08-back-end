@@ -12,10 +12,15 @@ const client = new pg.Client(process.env.DATABASE_URL);
 client.connect();
 
 //Error handling for database
-
 client.on('error', err => console.err(err));
 // Tells express to use 'cors' for cross-origin resource sharing
 app.use(cors());
+
+// Empty the contents of a table
+function deleteByLocationId(table, city) {
+  const SQL = `DELETE from ${table} WHERE location_id=${city};`;
+  return client.query(SQL);
+}
 
 // Allows us to use the .env file
 require('dotenv').config();
@@ -125,36 +130,60 @@ function LocationResult(search, location) {
 
 // Weather helper function
 function getWeather(request, response) {
-  const url = `https://api.darksky.net/forecast/${
-    process.env.DARK_SKY_API_KEY
-    }/${request.query.data.latitude},${request.query.data.longitude}`;
-  return superagent.get(url)
-    .then(result => {
-      const weatherSummary = result.body.daily.data.map(day => {
-        const dailySumary = new WeatherResult(day);
-        dailySumary.save(request.query.data.id);
-        return dailySumary;
-      });
-      response.send(weatherSummary);
-    })
-    .catch(error => processError(error, response));
+  WeatherResult.lookup({
+    tableName: WeatherResult.tableName,
+
+    cacheMiss: function () {
+      const url = `https://api.darksky.net/forecast/${
+        process.env.DARK_SKY_API_KEY
+        }/${request.query.data.latitude},${request.query.data.longitude}`;
+
+      superagent.get(url)
+        .then(result => {
+          const weatherSummary = result.body.daily.data.map(day => {
+            const dailySumary = new WeatherResult(day);
+            dailySumary.save(request.query.data.id);
+            return dailySumary;
+          });
+          response.send(weatherSummary);
+        })
+        .catch(error => processError(error, response));
+
+    },
+
+    cacheHit: function (resultsArray) {
+      console.log('CacheHit');
+      let ageOfData = (Date.now() - resultsArray[0].created_at) / (1000 * 60);
+
+      if (ageOfData > 30) {
+        console.log('Data is OLD!!!!');
+        WeatherResult.deleteByLocationId(WeatherResult.tableName, request.query.data.id);
+      } else {
+        console.log('Data is Current');
+        response.send(resultsArray);
+      }
+    }
+  });
 }
+
+
+
+
 
 // Restraurant helper function
 function getRestaurants(request, response) {
   const url = `https://api.yelp.com/v3/businesses/search?location=${
     request.query.data.search_query
     }`;
-
-  return superagent
-    .get(url)
+  return superagent.get(url)
     .set('Authorization', `Bearer ${process.env.YELP_API_KEY}`)
     .then(result => {
-      let yelpData = [];
-      yelpData = result.body.businesses.map(restaurant => {
-        return new RestaurantResult(restaurant);
+      const yelpSummary = result.body.businesses.map(restaurant => {
+        const eachRestaurant = new RestaurantResult(restaurant);
+        eachRestaurant.save(request.query.data.id);
+        return eachRestaurant;
       });
-      response.send(yelpData);
+      response.send(yelpSummary);
     })
     .catch(error => processError(error, response));
 }
@@ -167,11 +196,12 @@ function getMovies(request, response) {
   return superagent
     .get(url)
     .then(result => {
-      let movieData = [];
-      movieData = result.body.results.map(movie => {
-        return new MovieResults(movie);
+      const movieSummary = result.body.results.map(movie => {
+        const eachMovie = new MovieResults(movie);
+        eachMovie.save(request.query.data.id);
+        return eachMovie;
       });
-      response.send(movieData);
+      response.send(movieSummary);
     })
     .catch(error => processError(error, response));
 }
