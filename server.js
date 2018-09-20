@@ -57,6 +57,16 @@ WeatherResult.prototype = {
   }
 };
 
+//Constructor function for Yelp API
+function RestaurantResult(restaurant) {
+  this.name = restaurant.name;
+  this.image_url = restaurant.image_url;
+  this.price = restaurant.price;
+  this.rating = restaurant.rating;
+  this.url = restaurant.url;
+  this.created_at = Date.now();
+}
+
 RestaurantResult.prototype = {
   save: function (location_id) {
     const SQL = `INSERT INTO ${
@@ -67,6 +77,18 @@ RestaurantResult.prototype = {
     client.query(SQL, values);
   }
 };
+
+//Constructor function for The Movie Database API
+function MovieResults(movie) {
+  this.title = movie.title;
+  this.overview = movie.overview;
+  this.average_votes = movie.vote_average;
+  this.total_votes = movie.vote_count;
+  this.image_url = `https://image.tmdb.org/t/p/w500${movie.poster_path}`;
+  this.popularity = movie.popularity;
+  this.released_on = movie.release_date;
+  this.created_at = Date.now();
+}
 
 MovieResults.prototype = {
   save: function (location_id) {
@@ -83,29 +105,6 @@ MovieResults.prototype = {
 WeatherResult.tableName = 'weathers';
 RestaurantResult.tableName = 'restaurants';
 MovieResults.tableName = 'movies';
-
-
-//Constructor function for Yelp API
-function RestaurantResult(restaurant) {
-  this.name = restaurant.name;
-  this.image_url = restaurant.image_url;
-  this.price = restaurant.price;
-  this.rating = restaurant.rating;
-  this.url = restaurant.url;
-  this.created_at = Date.now();
-}
-
-//Constructor function for The Movie Database API
-function MovieResults(movie) {
-  this.title = movie.title;
-  this.overview = movie.overview;
-  this.average_votes = movie.vote_average;
-  this.total_votes = movie.vote_count;
-  this.image_url = `https://image.tmdb.org/t/p/w500${movie.poster_path}`;
-  this.popularity = movie.popularity;
-  this.released_on = movie.release_date;
-  this.created_at = Date.now();
-}
 
 // Google helper function refactored prior to lab start.
 function getLocation(request, response) {
@@ -165,10 +164,6 @@ function getWeather(request, response) {
     }
   });
 }
-
-
-
-
 
 // Restraurant helper function
 function getRestaurants(request, response) {
