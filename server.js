@@ -47,10 +47,10 @@ function WeatherResult(weather) {
 }
 
 WeatherResult.prototype = {
-  save: function (location_id) {
+  save: function(location_id) {
     const SQL = `INSERT INTO ${
       this.tableName
-      } (forecast, time, location_id) VALUES ($1, $2, $3, $4);`;
+    } (forecast, time, location_id) VALUES ($1, $2, $3, $4);`;
     const values = [this.forecast, this.time, this.created_at, location_id];
 
     client.query(SQL, values);
@@ -68,11 +68,19 @@ function RestaurantResult(restaurant) {
 }
 
 RestaurantResult.prototype = {
-  save: function (location_id) {
+  save: function(location_id) {
     const SQL = `INSERT INTO ${
       this.tableName
-      } (name,image_url,price,rating,url,created_at,location_id) VALUES ($1, $2, $3, $4, $5, $6);`;
-    const values = [this.name, this.image_url, this.price, this.rating, this.url, this.created_at, location_id];
+    } (name,image_url,price,rating,url,created_at,location_id) VALUES ($1, $2, $3, $4, $5, $6);`;
+    const values = [
+      this.name,
+      this.image_url,
+      this.price,
+      this.rating,
+      this.url,
+      this.created_at,
+      location_id
+    ];
 
     client.query(SQL, values);
   }
@@ -91,11 +99,21 @@ function MovieResults(movie) {
 }
 
 MovieResults.prototype = {
-  save: function (location_id) {
+  save: function(location_id) {
     const SQL = `INSERT INTO ${
       this.tableName
-      } (title, overview, average_votes, total_votes, image_url, popularity, relased_on, created_at, location_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9);`;
-    const values = [this.title, this.overview, this.average_votes, this.total_votes, this.image_url, this.popularity, this.release_on, this.created_at, location_id];
+    } (title, overview, average_votes, total_votes, image_url, popularity, relased_on, created_at, location_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9);`;
+    const values = [
+      this.title,
+      this.overview,
+      this.average_votes,
+      this.total_votes,
+      this.image_url,
+      this.popularity,
+      this.release_on,
+      this.created_at,
+      location_id
+    ];
 
     client.query(SQL, values);
   }
@@ -110,7 +128,7 @@ MovieResults.tableName = 'movies';
 function getLocation(request, response) {
   const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${
     request.query.data
-    }&key=${process.env.GOOGLE_API_KEY}`;
+  }&key=${process.env.GOOGLE_API_KEY}`;
   return superagent
     .get(url)
     .then(location => {
@@ -127,17 +145,36 @@ function LocationResult(search, location) {
   this.longitude = location.body.results[0].geometry.location.lng;
 }
 
+// Weather lookup function
+
+WeatherResult.lookup = options => {
+  const SQL = `SELECT * FROM ${options.tableName} WHERE location_id=$1;`;
+  const values = [location];
+
+  client
+    .query(SQL, values)
+    .then(result => {
+      if (result.rowCount > 0) {
+        options.cacheHit(result.rows);
+      } else {
+        options.cacheMiss();
+      }
+    })
+    .catch(error => processError(error));
+};
+
 // Weather helper function
 function getWeather(request, response) {
   WeatherResult.lookup({
     tableName: WeatherResult.tableName,
 
-    cacheMiss: function () {
+    cacheMiss: function() {
       const url = `https://api.darksky.net/forecast/${
         process.env.DARK_SKY_API_KEY
-        }/${request.query.data.latitude},${request.query.data.longitude}`;
+      }/${request.query.data.latitude},${request.query.data.longitude}`;
 
-      superagent.get(url)
+      superagent
+        .get(url)
         .then(result => {
           const weatherSummary = result.body.daily.data.map(day => {
             const dailySumary = new WeatherResult(day);
@@ -147,16 +184,18 @@ function getWeather(request, response) {
           response.send(weatherSummary);
         })
         .catch(error => processError(error, response));
-
     },
 
-    cacheHit: function (resultsArray) {
+    cacheHit: function(resultsArray) {
       console.log('CacheHit');
       let ageOfData = (Date.now() - resultsArray[0].created_at) / (1000 * 60);
 
       if (ageOfData > 30) {
         console.log('Data is OLD!!!!');
-        WeatherResult.deleteByLocationId(WeatherResult.tableName, request.query.data.id);
+        WeatherResult.deleteByLocationId(
+          WeatherResult.tableName,
+          request.query.data.id
+        );
       } else {
         console.log('Data is Current');
         response.send(resultsArray);
@@ -169,8 +208,9 @@ function getWeather(request, response) {
 function getRestaurants(request, response) {
   const url = `https://api.yelp.com/v3/businesses/search?location=${
     request.query.data.search_query
-    }`;
-  return superagent.get(url)
+  }`;
+  return superagent
+    .get(url)
     .set('Authorization', `Bearer ${process.env.YELP_API_KEY}`)
     .then(result => {
       const yelpSummary = result.body.businesses.map(restaurant => {
@@ -187,7 +227,7 @@ function getRestaurants(request, response) {
 function getMovies(request, response) {
   const url = `https://api.themoviedb.org/3/search/movie?api_key=${
     process.env.TMDB_APIv3_KEY
-    }&query=${request.query.data.search_query}`;
+  }&query=${request.query.data.search_query}`;
   return superagent
     .get(url)
     .then(result => {
