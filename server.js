@@ -31,12 +31,12 @@ const PORT = process.env.PORT;
 
 // When the user submits the form, the following app.get() will call the correct helper function to retrieve the API information.
 app.get('/location', getLocation); //google API
-app.get('/weather', getWeather); //darkskies API
-app.get('/yelp', getRestaurants); // yelp API
+// app.get('/weather', getWeather); //darkskies API
+// app.get('/yelp', getRestaurants); // yelp API
 // app.get('/movies', getMovies); // the movie database API
 
 // Tells the server to start listening to the PORT, and console.logs to tell us it's on.
-app.listen(PORT, () => console.log(`Listening on ${PORT}`));
+app.listen(PORT, () => console.log(`LAB-08 - Listening on ${PORT}`));
 
 // CONSTRUCTOR FUNCTIONS START HERE //
 
@@ -149,8 +149,8 @@ RestaurantResult.deleteByLocationId = deleteByLocationId;
 
 // HELPER FUNCTIONS START HERE
 // Generic lookup helper function
-function lookup(options) {
-  const SQL = `SELECT * FROM ${options.tableName} WHERE location_id=$1;`;
+function lookup(options, location) {
+  const SQL = `SELECT * FROM ${options.tableName} WHERE ${location}=$1;`;
   const values = [options.location];
 
   client
@@ -166,11 +166,15 @@ function lookup(options) {
 }
 
 // Google helper function refactored prior to lab start.
+
 function getLocation(request, response) {
+  console.log('checking for data now...');
   LocationResult.lookup({
     tablename: LocationResult.tablename,
     cacheMiss: function () {
+      console.log('Getting your data from the GOOGLES');
       const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${request.query.data}&key=${process.env.GOOGLE_API_KEY}`;
+
       superagent
         .get(url)
         .then(location => {
@@ -180,7 +184,7 @@ function getLocation(request, response) {
         })
         .catch(error => processError(error, response));
     }
-  })
+  }, 'id')
 }
 
 // Weather helper function
@@ -219,7 +223,7 @@ function getWeather(request, response) {
         response.send(resultsArray);
       }
     }
-  });
+  }, 'location_id');
 }
 
 // Restraurant helper function
