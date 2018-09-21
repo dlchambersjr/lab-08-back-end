@@ -12,7 +12,7 @@ const client = new pg.Client(process.env.DATABASE_URL);
 client.connect();
 
 //Error handling for database
-client.on('error', err => console.err(err));
+client.on('error', err => console.error(err));
 // Tells express to use 'cors' for cross-origin resource sharing
 app.use(cors());
 
@@ -28,16 +28,16 @@ require('dotenv').config();
 // assigns the PORT variable to equal the port declared in the .env file for our local server.  It also allows heroku to assign it's own port number.
 const PORT = process.env.PORT;
 
-// The following app.get() will call the correct helper function to retrieve the API information.
+// When the user submits the form, the following app.get() will call the correct helper function to retrieve the API information.
 app.get('/location', getLocation); //google API
 app.get('/weather', getWeather); //darkskies API
-app.get('/yelp', getRestaurants); // yelp API
-app.get('/movies', getMovies); // the movie database API
+// app.get('/yelp', getRestaurants); // yelp API
+// app.get('/movies', getMovies); // the movie database API
 
 // Tells the server to start listening to the PORT, and console.logs to tell us it's on.
 app.listen(PORT, () => console.log(`Listening on ${PORT}`));
 
-// CONSTRUCTORS BELOW //
+// CONSTRUCTOR FUNCTIONS START HERE //
 
 // Constructor function for Darksky API
 function WeatherResult(weather) {
@@ -56,67 +56,72 @@ WeatherResult.prototype = {
 };
 
 //Constructor function for Yelp API
-function RestaurantResult(restaurant) {
-  this.name = restaurant.name;
-  this.image_url = restaurant.image_url;
-  this.price = restaurant.price;
-  this.rating = restaurant.rating;
-  this.url = restaurant.url;
-  this.created_at = Date.now();
-}
+// function RestaurantResult(restaurant) {
+//   this.name = restaurant.name;
+//   this.image_url = restaurant.image_url;
+//   this.price = restaurant.price;
+//   this.rating = restaurant.rating;
+//   this.url = restaurant.url;
+//   this.created_at = Date.now();
+// }
 
-RestaurantResult.prototype = {
-  save: function (location_id) {
-    const SQL = `INSERT INTO ${this.tableName} (name,image_url,price,rating,url,created_at,location_id) VALUES ($1, $2, $3, $4, $5, $6);`;
-    const values = [
-      this.name,
-      this.image_url,
-      this.price,
-      this.rating,
-      this.url,
-      this.created_at,
-      location_id
-    ];
+// RestaurantResult.prototype = {
+//   save: function (location_id) {
+//     const SQL = `INSERT INTO ${this.tableName} (name,image_url,price,rating,url,created_at,location_id) VALUES ($1, $2, $3, $4, $5, $6);`;
+//     const values = [
+//       this.name,
+//       this.image_url,
+//       this.price,
+//       this.rating,
+//       this.url,
+//       this.created_at,
+//       location_id
+//     ];
 
-    client.query(SQL, values);
-  }
-};
+//     client.query(SQL, values);
+//   }
+// };
 
 //Constructor function for The Movie Database API
-function MovieResults(movie) {
-  this.title = movie.title;
-  this.overview = movie.overview;
-  this.average_votes = movie.vote_average;
-  this.total_votes = movie.vote_count;
-  this.image_url = `https://image.tmdb.org/t/p/w500${movie.poster_path}`;
-  this.popularity = movie.popularity;
-  this.released_on = movie.release_date;
-  this.created_at = Date.now();
-}
+// function MovieResults(movie) {
+//   this.title = movie.title;
+//   this.overview = movie.overview;
+//   this.average_votes = movie.vote_average;
+//   this.total_votes = movie.vote_count;
+//   this.image_url = `https://image.tmdb.org/t/p/w500${movie.poster_path}`;
+//   this.popularity = movie.popularity;
+//   this.released_on = movie.release_date;
+//   this.created_at = Date.now();
+// }
 
-MovieResults.prototype = {
-  save: function (location_id) {
-    const SQL = `INSERT INTO ${this.tableName} (title, overview, average_votes, total_votes, image_url, popularity, relased_on, created_at, location_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9);`;
-    const values = [
-      this.title,
-      this.overview,
-      this.average_votes,
-      this.total_votes,
-      this.image_url,
-      this.popularity,
-      this.release_on,
-      this.created_at,
-      location_id
-    ];
+// MovieResults.prototype = {
+//   save: function (location_id) {
+//     const SQL = `INSERT INTO ${this.tableName} (title, overview, average_votes, total_votes, image_url, popularity, relased_on, created_at, location_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9);`;
+//     const values = [
+//       this.title,
+//       this.overview,
+//       this.average_votes,
+//       this.total_votes,
+//       this.image_url,
+//       this.popularity,
+//       this.release_on,
+//       this.created_at,
+//       location_id
+//     ];
 
-    client.query(SQL, values);
-  }
-};
+//     client.query(SQL, values);
+//   }
+// };
 
-// Define table names for each process
+// Define table names, lookup, and deleteByLoaction for each process
 WeatherResult.tableName = 'weathers';
-RestaurantResult.tableName = 'restaurants';
-MovieResults.tableName = 'movies';
+WeatherResult.lookup = lookup;
+WeatherResult.deleteByLocationId = deleteByLocationId;
+
+// RestaurantResult.tableName = 'restaurants';
+// MovieResults.tableName = 'movies';
+
+// HELPER FUNCTIONS START HERE
 
 // Google helper function refactored prior to lab start.
 function getLocation(request, response) {
@@ -138,8 +143,7 @@ function LocationResult(search, location) {
 }
 
 // Weather lookup function
-
-WeatherResult.lookup = options => {
+function lookup(options) {
   const SQL = `SELECT * FROM ${options.tableName} WHERE location_id=$1;`;
   const values = [location];
 
@@ -157,7 +161,7 @@ WeatherResult.lookup = options => {
 
 // Weather helper function
 function getWeather(request, response) {
-  WeatherResult.lookup({
+  WeatherResult.lookup({ //This invokes the generic lookup function
     tableName: WeatherResult.tableName,
 
     cacheMiss: function () {
@@ -182,7 +186,7 @@ function getWeather(request, response) {
 
       if (ageOfData > 30) {
         console.log('Data is OLD!!!!');
-        WeatherResult.deleteByLocationId(
+        deleteByLocationId(
           WeatherResult.tableName,
           request.query.data.id
         );
@@ -194,40 +198,38 @@ function getWeather(request, response) {
   });
 }
 
-// Restraurant helper function
-function getRestaurants(request, response) {
-  const url = `https://api.yelp.com/v3/businesses/search?location=${request.query.data.search_query}`;
-  return superagent
-    .get(url)
-    .set('Authorization', `Bearer ${process.env.YELP_API_KEY}`)
-    .then(result => {
-      const yelpSummary = result.body.businesses.map(restaurant => {
-        const eachRestaurant = new RestaurantResult(restaurant);
-        eachRestaurant.save(request.query.data.id);
-        return eachRestaurant;
-      });
-      response.send(yelpSummary);
-    })
-    .catch(error => processError(error, response));
-}
+// // Restraurant helper function
+// function getRestaurants(request, response) {
+//   const url = `https://api.yelp.com/v3/businesses/search?location=${request.query.data.search_query}`;
+//   return superagent
+//     .get(url)
+//     .set('Authorization', `Bearer ${process.env.YELP_API_KEY}`)
+//     .then(result => {
+//       const yelpSummary = result.body.businesses.map(restaurant => {
+//         const eachRestaurant = new RestaurantResult(restaurant);
+//         eachRestaurant.save(request.query.data.id);
+//         return eachRestaurant;
+//       });
+//       response.send(yelpSummary);
+//     })
+//     .catch(error => processError(error, response));
+// }
 
-//Movies helper function
-function getMovies(request, response) {
-  const url = `https://api.themoviedb.org/3/search/movie?api_key=${
-    process.env.TMDB_APIv3_KEY
-    }&query=${request.query.data.search_query}`;
-  return superagent
-    .get(url)
-    .then(result => {
-      const movieSummary = result.body.results.map(movie => {
-        const eachMovie = new MovieResults(movie);
-        eachMovie.save(request.query.data.id);
-        return eachMovie;
-      });
-      response.send(movieSummary);
-    })
-    .catch(error => processError(error, response));
-}
+// //Movies helper function
+// function getMovies(request, response) {
+//   const url = `https://api.themoviedb.org/3/search/movie?api_key=${process.env.TMDB_APIv3_KEY}&query=${request.query.data.search_query}`;
+//   return superagent
+//     .get(url)
+//     .then(result => {
+//       const movieSummary = result.body.results.map(movie => {
+//         const eachMovie = new MovieResults(movie);
+//         eachMovie.save(request.query.data.id);
+//         return eachMovie;
+//       });
+//       response.send(movieSummary);
+//     })
+//     .catch(error => processError(error, response));
+// }
 
 // Error handeling helper function
 function processError(err, res) {
