@@ -32,13 +32,30 @@ const PORT = process.env.PORT;
 // When the user submits the form, the following app.get() will call the correct helper function to retrieve the API information.
 app.get('/location', getLocation); //google API
 app.get('/weather', getWeather); //darkskies API
-// app.get('/yelp', getRestaurants); // yelp API
+app.get('/yelp', getRestaurants); // yelp API
 // app.get('/movies', getMovies); // the movie database API
 
 // Tells the server to start listening to the PORT, and console.logs to tell us it's on.
 app.listen(PORT, () => console.log(`Listening on ${PORT}`));
 
 // CONSTRUCTOR FUNCTIONS START HERE //
+
+// Contructor function for Google API
+function LocationResult(search, location) {
+  this.search_query = search;
+  this.formatted_query = location.body.results[0].formatted_address;
+  this.latitude = location.body.results[0].geometry.location.lat;
+  this.longitude = location.body.results[0].geometry.location.lng;
+}
+
+LocationResult.prototype = {
+  save: function () {
+    const SQL = `INSERT INTO ${this.tableName} (search_query, formatted_query, latitude, longitude) VALUES ($1, $2, $3, $4);`;
+    const values = [this.search_query, this.formatted_query, this.latitude, this.longitude];
+
+    client.query(SQL, values);
+  }
+};
 
 // Constructor function for Darksky API
 function WeatherResult(weather) {
@@ -56,32 +73,32 @@ WeatherResult.prototype = {
   }
 };
 
-//Constructor function for Yelp API
-// function RestaurantResult(restaurant) {
-//   this.name = restaurant.name;
-//   this.image_url = restaurant.image_url;
-//   this.price = restaurant.price;
-//   this.rating = restaurant.rating;
-//   this.url = restaurant.url;
-//   this.created_at = Date.now();
-// }
+// Constructor function for Yelp API
+function RestaurantResult(restaurant) {
+  this.name = restaurant.name;
+  this.image_url = restaurant.image_url;
+  this.price = restaurant.price;
+  this.rating = restaurant.rating;
+  this.url = restaurant.url;
+  this.created_at = Date.now();
+}
 
-// RestaurantResult.prototype = {
-//   save: function (location_id) {
-//     const SQL = `INSERT INTO ${this.tableName} (name,image_url,price,rating,url,created_at,location_id) VALUES ($1, $2, $3, $4, $5, $6);`;
-//     const values = [
-//       this.name,
-//       this.image_url,
-//       this.price,
-//       this.rating,
-//       this.url,
-//       this.created_at,
-//       location_id
-//     ];
+RestaurantResult.prototype = {
+  save: function (location_id) {
+    const SQL = `INSERT INTO ${this.tableName} (name,image_url,price,rating,url,created_at,location_id) VALUES ($1, $2, $3, $4, $5, $6);`;
+    const values = [
+      this.name,
+      this.image_url,
+      this.price,
+      this.rating,
+      this.url,
+      this.created_at,
+      location_id
+    ];
 
-//     client.query(SQL, values);
-//   }
-// };
+    client.query(SQL, values);
+  }
+};
 
 //Constructor function for The Movie Database API
 // function MovieResults(movie) {
@@ -115,38 +132,26 @@ WeatherResult.prototype = {
 // };
 
 // Define table names, lookup, and deleteByLoaction for each process
+LocationResult.tablename = 'locations';
+LocationResult.lookup = lookup;
+
 WeatherResult.tableName = 'weathers';
 WeatherResult.lookup = lookup;
 WeatherResult.deleteByLocationId = deleteByLocationId;
 
-// RestaurantResult.tableName = 'restaurants';
-// MovieResults.tableName = 'movies';
+RestaurantResult.tableName = 'restaurants';
+RestaurantResult.lookup = lookup;
+RestaurantResult.deleteByLocationId = deleteByLocationId;
+
+// MovieResult.tableName = 'movies';
+// MovieResult.lookup = lookup;
+// MovieResult.deleteByLocationId = deleteByLocationId
 
 // HELPER FUNCTIONS START HERE
-
-// Google helper function refactored prior to lab start.
-function getLocation(request, response) {
-  const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${request.query.data}&key=${process.env.GOOGLE_API_KEY}`;
-  return superagent
-    .get(url)
-    .then(location => {
-      response.send(new LocationResult(request.query.data, location));
-    })
-    .catch(error => processError(error, response));
-}
-
-// Contructor function for Google API
-function LocationResult(search, location) {
-  this.search_query = search;
-  this.formatted_query = location.body.results[0].formatted_address;
-  this.latitude = location.body.results[0].geometry.location.lat;
-  this.longitude = location.body.results[0].geometry.location.lng;
-}
-
-// Weather lookup function
+// Generic lookup helper function
 function lookup(options) {
   const SQL = `SELECT * FROM ${options.tableName} WHERE location_id=$1;`;
-  const values = [location];
+  const values = [options.location];
 
   client
     .query(SQL, values)
@@ -158,7 +163,25 @@ function lookup(options) {
       }
     })
     .catch(error => processError(error));
-};
+}
+
+// Google helper function refactored prior to lab start.
+function getLocation(request, response) {
+  LocationResult.lookup({
+    tablename: LocationResult.tablename,
+    cacheMiss: function () {
+      const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${request.query.data}&key=${process.env.GOOGLE_API_KEY}`;
+      superagent
+        .get(url)
+        .then(location => {
+          const foundLocation = new LocationResult(request.query.data, location);
+          foundLocation.save();
+          response.send(foundLocation);
+        })
+        .catch(error => processError(error, response));
+    }
+  })
+}
 
 // Weather helper function
 function getWeather(request, response) {
@@ -199,22 +222,46 @@ function getWeather(request, response) {
   });
 }
 
-// // Restraurant helper function
-// function getRestaurants(request, response) {
-//   const url = `https://api.yelp.com/v3/businesses/search?location=${request.query.data.search_query}`;
-//   return superagent
-//     .get(url)
-//     .set('Authorization', `Bearer ${process.env.YELP_API_KEY}`)
-//     .then(result => {
-//       const yelpSummary = result.body.businesses.map(restaurant => {
-//         const eachRestaurant = new RestaurantResult(restaurant);
-//         eachRestaurant.save(request.query.data.id);
-//         return eachRestaurant;
-//       });
-//       response.send(yelpSummary);
-//     })
-//     .catch(error => processError(error, response));
-// }
+// Restraurant helper function
+function getRestaurants(request, response) {
+  RestaurantResult.lookup({
+    tableName: RestaurantResult.tablename,
+
+    cacheMiss: function () {
+
+      const url = `https://api.yelp.com/v3/businesses/search?location=${request.query.data.search_query}`;
+      console.log('checking for data');
+      superagent
+        .get(url)
+        .set('Authorization', `Bearer ${process.env.YELP_API_KEY}`)
+        .then(result => {
+          const yelpSummary = result.body.businesses.map(restaurant => {
+            const eachRestaurant = new RestaurantResult(restaurant);
+            eachRestaurant.save(request.query.data.id);
+            return eachRestaurant;
+          });
+          response.send(yelpSummary);
+        })
+        .catch(error => processError(error, response));
+    },
+
+    cacheHit: function (resultsArray) {
+      console.log('CacheHit');
+      let ageOfData = (Date.now() - resultsArray[0].created_at) / (1000 * 60);
+
+      if (ageOfData > 30) {
+        console.log('Data is OLD!!!!');
+        deleteByLocationId(
+          RestaurantResult.tableName,
+          request.query.data.id
+        );
+      } else {
+        console.log('Data is Current');
+        response.send(resultsArray);
+      }
+    }
+  });
+}
 
 // //Movies helper function
 // function getMovies(request, response) {
