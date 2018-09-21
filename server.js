@@ -7,6 +7,9 @@ const pg = require('pg');
 
 const app = express();
 
+// Allows us to use the .env file
+require('dotenv').config();
+
 // Setup database by creating a client instance, pointing it at our database
 const client = new pg.Client(process.env.DATABASE_URL);
 client.connect();
@@ -22,8 +25,6 @@ function deleteByLocationId(table, city) {
   return client.query(SQL);
 }
 
-// Allows us to use the .env file
-require('dotenv').config();
 
 // assigns the PORT variable to equal the port declared in the .env file for our local server.  It also allows heroku to assign it's own port number.
 const PORT = process.env.PORT;
