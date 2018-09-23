@@ -1,4 +1,4 @@
-# lab-06-back-end
+# lab-08-back-end
 
 **Author**: David Chambers, Joey Eisenzimmer, Andy Fields
 **Version**: 1.2.0
