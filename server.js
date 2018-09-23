@@ -92,10 +92,9 @@ LocationResults.lookupLocation = (location) => {
     .catch(console.error);
 }
 
-
-
 // Constructor function for Darksky API
 function WeatherResult(weather) {
+  this.tableName = 'weathers';
   this.time = new Date(weather.time * 1000).toString().slice(0, 15);
   this.forecast = weather.summary;
   this.created_at = Date.now();
@@ -110,7 +109,7 @@ WeatherResult.prototype = {
     console.log('\n\n+++++++++++++++++++++++\n\n');
 
 
-    const SQL = `INSERT INTO ${this.tableName} (forecast, time, location_id) VALUES ($1, $2, $3, $4);`;
+    const SQL = `INSERT INTO ${this.tableName} (forecast, time, created_at, location_id) VALUES ($1, $2, $3, $4);`;
     const values = [this.forecast, this.time, this.created_at, location_id];
 
     console.log(SQL, values);
@@ -202,7 +201,7 @@ function lookup(options) {
   console.log('\n\n+++++++++++++++++++++++\n\n');
 
 
-  const SQL = `SELECT * FROM ${this.tableName} WHERE location_id=$1;`;
+  const SQL = `SELECT * FROM ${options.tableName} WHERE location_id=$1;`;
 
   const values = [options.id];
 
