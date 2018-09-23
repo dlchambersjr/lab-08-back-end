@@ -283,6 +283,11 @@ function getWeather(request, response) {
           });
           console.log('DARK SKY data collected...');
           console.log(weatherSummary);
+
+          console.log('\n\n+++++++++++++++\n\n');
+          console.log(`finsihed getting WEATHER: `);
+          console.log('\n\n+++++++++++++++++++++++\n\n');
+
           response.send(weatherSummary);
         })
         .catch(error => processError(error, response));
@@ -293,13 +298,21 @@ function getWeather(request, response) {
       let ageOfData = (Date.now() - resultsArray[0].created_at) / (1000 * 60);
 
       if (ageOfData > 30) {
-        console.log('Data is OLD!!!!');
         deleteByLocationId(
           WeatherResult.tableName,
           request.query.data.id
         );
+
+        console.log('\n\n+++++++++++++++\n\n');
+        console.log(`finsihed getting WEATHER: `);
+        console.log('\n\n+++++++++++++++++++++++\n\n');
+
       } else {
-        console.log('Data is Current');
+
+        console.log('\n\n+++++++++++++++\n\n');
+        console.log(`finsihed getting WEATHER: `);
+        console.log('\n\n+++++++++++++++++++++++\n\n');
+
         response.send(resultsArray);
       }
     }
