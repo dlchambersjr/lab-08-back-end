@@ -32,9 +32,11 @@ CREATE TABLE IF NOT EXISTS movies (
   average_votes NUMERIC(4,2),
   total_votes BIGINT,
   image_url VARCHAR(255),
-  popularity NUMERIC(5,3),
+  popularity NUMERIC(8,3),
   released_on VARCHAR(255),
   created_at BIGINT,
   location_id INTEGER NOT NULL REFERENCES locations(id)
 );
+
+
 
