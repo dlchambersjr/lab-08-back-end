@@ -31,6 +31,7 @@ const PORT = process.env.PORT || 3000;
 
 // When the user submits the form, the following app.get() will call the correct helper function to retrieve the API information.
 app.get('/location', getLocation); //google API
+
 app.get('/weather', getWeather); //darkskies API
 // app.get('/yelp', getRestaurants); // yelp API
 // app.get('/movies', getMovies); // the movie database API
@@ -58,6 +59,11 @@ LocationResults.prototype = {
     return client.query(SQL, values)
       .then(result => {
         this.id = result.rows[0].id;
+
+        console.log('\n\n+++++AFTER ID ADDED+++++++++++\n\n');
+        console.log(this);
+        console.log('\n\n+++++++++++++++++++++++\n\n');
+
         return this;
       });
   }
@@ -75,6 +81,12 @@ LocationResults.lookupLocation = (location) => {
         location.cacheHit(result.rows[0]);
       } else {
         location.cacheMiss();
+
+        console.log('\n\n+++++AFTER LOCATION CACHEMISS+++++\n\n');
+        console.log(this);
+        console.log('\n\n+++++++++++++++++++++++\n\n');
+
+
       }
     })
     .catch(console.error);
@@ -91,8 +103,17 @@ function WeatherResult(weather) {
 
 WeatherResult.prototype = {
   save: function (location_id) {
+
+    console.log('\n\n+++++ID PASSES TO WEATHER++++++++++\n\n');
+    console.log(`Table: ${this.tableName}`);
+    console.log(location_id);
+    console.log('\n\n+++++++++++++++++++++++\n\n');
+
+
     const SQL = `INSERT INTO ${this.tableName} (forecast, time, location_id) VALUES ($1, $2, $3, $4);`;
     const values = [this.forecast, this.time, this.created_at, location_id];
+
+    console.log(SQL, values);
 
     client.query(SQL, values);
   }
@@ -175,18 +196,24 @@ WeatherResult.deleteByLocationId = deleteByLocationId;
 // HELPER FUNCTIONS START HERE
 // Generic lookup helper function
 function lookup(options) {
-  console.log(`checking the data in ${options.tableName}`);
-  const SQL = `SELECT * FROM ${options.tableName} WHERE location_id=$1;`;
-  console.log(`checking to see if the weather exists`);
-  // FIXME:
-  const values = [9];
+
+  console.log('++++LOOKUP FUNCTION++++++++++\n\n');
+  console.log(options);
+  console.log('\n\n+++++++++++++++++++++++\n\n');
+
+
+  const SQL = `SELECT * FROM ${this.tableName} WHERE location_id=$1;`;
+
+  const values = [options.id];
+
+  console.log(`checking the data in ${options.tableName} for information linked to ID# ${values}`);
 
   client.query(SQL, values)
     .then(result => {
       if (result.rowCount > 0) {
         options.cacheHit(result.rows);
       } else {
-        console.log(`no records found for ${options.tableName}`);
+        // console.log(`no records found for ${options.tableName}`);
         options.cacheMiss();
       }
     })
@@ -200,6 +227,8 @@ function getLocation(request, response) {
   LocationResults.lookupLocation({
     query: request.query.data,
     cacheHit: function (result) {
+      console.log('GOOGLE data retrived...');
+      console.log(result);
       response.send(result);
     },
 
@@ -211,6 +240,11 @@ function getLocation(request, response) {
       return superagent.get(url)
         .then(result => {
           const location = new LocationResults(request.query.data, result);
+
+          console.log('\n\n+++++LOCATION Before Save+++++++++++\n\n');
+          console.log(location);
+          console.log('\n\n+++++++++++++++++++++++\n\n');
+
           location.save()
             .then(location => response.send(location)
             );
@@ -222,8 +256,18 @@ function getLocation(request, response) {
 
 // Weather helper function
 function getWeather(request, response) {
+
+  // console.log('\n\n+++++Weather request++++++++++\n\n');
+  // console.log(request);
+  // console.log('\n\n+++++++++++++++++++++++\n\n');
+
+  console.log('\n\n+++++Location ID++++++++++\n\n');
+  console.log(request.query.data.id);
+  console.log('\n\n+++++++++++++++++++++++\n\n');
+
   WeatherResult.lookup({
     tableName: WeatherResult.tableName,
+    id: request.query.data.id,
 
     cacheMiss: function () {
       console.log('Getting your data from the DARK SKY...');
@@ -233,11 +277,13 @@ function getWeather(request, response) {
         .then(result => {
           const weatherSummary = result.body.daily.data.map(day => {
             const dailySumary = new WeatherResult(day);
-            console.log('Attempting to save DARK SKY data....');
+            console.log('Processing DARK SKY data....');
+
             dailySumary.save(request.query.data.id);
             return dailySumary;
           });
           console.log('DARK SKY data collected...');
+          console.log(weatherSummary);
           response.send(weatherSummary);
         })
         .catch(error => processError(error, response));
