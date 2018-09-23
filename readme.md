@@ -1,6 +1,6 @@
 # lab-06-back-end
 
-**Author**: David Chambers and Joey Eisenzimmer and Andy Fields
+**Author**: David Chambers, Joey Eisenzimmer, Andy Fields
 **Version**: 1.2.0
 
 ## Overview
@@ -29,6 +29,10 @@ This project uses the following technologies:
 09-19-2018 12:00pm - (DC/AF) Created Yelp and Movies
 09-19-2018 1:30pm - (AF/DC) Wrapup
 09-19-2018 10:00pm - (DC) Refactored Code
+
+09-20-2018 9:00am - 1:30pm (DC/TL) - Worked on transitioning to a single lookup feature for each API and storing the data in a SQL Database.
+
+09-20-2018 11:00pm - (DC) Finished refactoring for DRY lookup function and SQL.
 
 ## Credits and Collaborations
 * Front end starter code provided by Samm Hamm and Allie Grampa
