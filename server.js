@@ -33,7 +33,7 @@ const PORT = process.env.PORT || 3000;
 app.get('/location', getLocation); //google API
 
 app.get('/weather', getWeather); //darkskies API
-app.get('/yelp', getRestaurants); // yelp API
+// app.get('/yelp', getRestaurants); // yelp API
 // app.get('/movies', getMovies); // the movie database API
 
 // Tells the server to start listening to the PORT, and console.logs to tell us it's on.
@@ -102,38 +102,48 @@ function WeatherResult(weather) {
 
 WeatherResult.prototype = {
   save: function (location_id) {
+
+    console.log('\n\n+++++ID PASSES TO WEATHER++++++++++\n\n');
+    console.log(`Table: ${this.tableName}`);
+    console.log(location_id);
+    console.log('\n\n+++++++++++++++++++++++\n\n');
+
+
     const SQL = `INSERT INTO ${this.tableName} (forecast, time, created_at, location_id) VALUES ($1, $2, $3, $4);`;
     const values = [this.forecast, this.time, this.created_at, location_id];
+
+    console.log(SQL, values);
+
     client.query(SQL, values);
   }
 };
 
-// CONSTRUCTOR for Yelp API
-function RestaurantResult(restaurant) {
-  this.tableName = 'restaurants';
-  this.name = restaurant.name;
-  this.image_url = restaurant.image_url;
-  this.price = restaurant.price;
-  this.rating = restaurant.rating;
-  this.url = restaurant.url;
-  this.created_at = Date.now();
-}
+// Constructor function for Yelp API
+// function RestaurantResult(restaurant) {
+//   this.name = restaurant.name;
+//   this.image_url = restaurant.image_url;
+//   this.price = restaurant.price;
+//   this.rating = restaurant.rating;
+//   this.url = restaurant.url;
+//   this.created_at = Date.now();
+// }
 
-RestaurantResult.prototype = {
-  save: function (location_id) {
-    const SQL = `INSERT INTO ${this.tableName} (name, image_url, price, rating, url, created_at, location_id) VALUES ($1, $2, $3, $4, $5, $6, $7);`;
-    const values = [
-      this.name,
-      this.image_url,
-      this.price,
-      this.rating,
-      this.url,
-      this.created_at,
-      location_id
-    ];
-    client.query(SQL, values);
-  }
-};
+// RestaurantResult.prototype = {
+//   save: function (location_id) {
+//     const SQL = `INSERT INTO ${this.tableName} (name,image_url,price,rating,url,created_at,location_id) VALUES ($1, $2, $3, $4, $5, $6);`;
+//     const values = [
+//       this.name,
+//       this.image_url,
+//       this.price,
+//       this.rating,
+//       this.url,
+//       this.created_at,
+//       location_id
+//     ];
+
+//     client.query(SQL, values);
+//   }
+// };
 
 //Constructor function for The Movie Database API
 // function MovieResults(movie) {
@@ -174,9 +184,9 @@ WeatherResult.tableName = 'weathers';
 WeatherResult.lookup = lookup;
 WeatherResult.deleteByLocationId = deleteByLocationId;
 
-RestaurantResult.tableName = 'restaurants';
-RestaurantResult.lookup = lookup;
-RestaurantResult.deleteByLocationId = deleteByLocationId;
+// RestaurantResult.tableName = 'restaurants';
+// RestaurantResult.lookup = lookup;
+// RestaurantResult.deleteByLocationId = deleteByLocationId;
 
 // MovieResult.tableName = 'movies';
 // MovieResult.lookup = lookup;
@@ -245,6 +255,15 @@ function getLocation(request, response) {
 
 // Weather helper function
 function getWeather(request, response) {
+
+  // console.log('\n\n+++++Weather request++++++++++\n\n');
+  // console.log(request);
+  // console.log('\n\n+++++++++++++++++++++++\n\n');
+
+  console.log('\n\n+++++Location ID++++++++++\n\n');
+  console.log(request.query.data.id);
+  console.log('\n\n+++++++++++++++++++++++\n\n');
+
   WeatherResult.lookup({
     tableName: WeatherResult.tableName,
     id: request.query.data.id,
@@ -288,46 +307,45 @@ function getWeather(request, response) {
 }
 
 // Restraurant helper function
-function getRestaurants(request, response) {
-  RestaurantResult.lookup({
-    tableName: RestaurantResult.tablename,
-    id: request.query.data.id,
+// function getRestaurants(request, response) {
+//   RestaurantResult.lookup({
+//     tableName: RestaurantResult.tablename,
 
-    cacheMiss: function () {
+//     cacheMiss: function () {
 
-      const url = `https://api.yelp.com/v3/businesses/search?location=${request.query.data.search_query}`;
-      console.log('checking for data');
-      superagent
-        .get(url)
-        .set('Authorization', `Bearer ${process.env.YELP_API_KEY}`)
-        .then(result => {
-          const yelpSummary = result.body.businesses.map(restaurant => {
-            const eachRestaurant = new RestaurantResult(restaurant);
-            eachRestaurant.save(request.query.data.id);
-            return eachRestaurant;
-          });
-          response.send(yelpSummary);
-        })
-        .catch(error => processError(error, response));
-    },
+//       const url = `https://api.yelp.com/v3/businesses/search?location=${request.query.data.search_query}`;
+//       console.log('checking for data');
+//       superagent
+//         .get(url)
+//         .set('Authorization', `Bearer ${process.env.YELP_API_KEY}`)
+//         .then(result => {
+//           const yelpSummary = result.body.businesses.map(restaurant => {
+//             const eachRestaurant = new RestaurantResult(restaurant);
+//             eachRestaurant.save(request.query.data.id);
+//             return eachRestaurant;
+//           });
+//           response.send(yelpSummary);
+//         })
+//         .catch(error => processError(error, response));
+//     },
 
-    cacheHit: function (resultsArray) {
-      console.log('CacheHit');
-      let ageOfData = (Date.now() - resultsArray[0].created_at) / (1000 * 60);
+//     cacheHit: function (resultsArray) {
+//       console.log('CacheHit');
+//       let ageOfData = (Date.now() - resultsArray[0].created_at) / (1000 * 60);
 
-      if (ageOfData > 30) {
-        console.log('Data is OLD!!!!');
-        deleteByLocationId(
-          RestaurantResult.tableName,
-          request.query.data.id
-        );
-      } else {
-        console.log('Data is Current');
-        response.send(resultsArray);
-      }
-    }
-  });
-}
+//       if (ageOfData > 30) {
+//         console.log('Data is OLD!!!!');
+//         deleteByLocationId(
+//           RestaurantResult.tableName,
+//           request.query.data.id
+//         );
+//       } else {
+//         console.log('Data is Current');
+//         response.send(resultsArray);
+//       }
+//     }
+//   });
+// }
 
 // //Movies helper function
 // function getMovies(request, response) {
